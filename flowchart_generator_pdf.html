@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowchart - Generate PDF KWL</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #293692;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: #666;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            padding: 40px;
+            max-width: 900px;
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        .legend {
+            margin-top: 32px;
+            max-width: 900px;
+            width: 100%;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            padding: 24px 40px;
+        }
+
+        .legend h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #293692;
+            margin-bottom: 16px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .legend-badge {
+            flex-shrink: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-top: 5px;
+        }
+
+        .badge-blue { background: #293692; }
+        .badge-green { background: #4AC072; }
+        .badge-red { background: #F94747; }
+        .badge-orange { background: #FF8227; }
+        .badge-teal { background: #1BA4B4; }
+
+        .footer {
+            margin-top: 24px;
+            font-size: 0.8rem;
+            color: #999;
+            text-align: center;
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 20px 12px; }
+            .card, .legend { padding: 20px; }
+            h1 { font-size: 1.35rem; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Flowchart: Generate PDF KWL</h1>
+    <p class="subtitle">Alur dosen menggunakan fitur Generate Form KWL pada halaman Course</p>
+
+    <div class="card">
+        <div class="mermaid">
+flowchart TD
+    Start([Dosen membuka halaman Course])
+    ClickBtn["Klik tombol 'Generate Form KWL'"]
+    ModalOpen[Modal form terbuka]
+    InputTopic["Isi Topik Materi (maks 80 karakter)"]
+    ChooseMode{Pilih Jenis Pertanyaan}
+
+    DefaultMode["Mode: Pertanyaan Default"]
+    DefaultPreview["Preview otomatis 3 pertanyaan:\nK: Apa yang kamu ketahui tentang Topik?\nW: Apa yang ingin kamu ketahui tentang Topik?\nL: Apa yang sudah kamu pelajari tentang Topik?"]
+
+    CustomMode["Mode: Input Sendiri"]
+    CustomInput["Isi pertanyaan custom\nper section K / W / L"]
+    AddMore{"Tambah pertanyaan?\n(maks 3 per section)"}
+
+    ClickDownload["Klik 'Download PDF KWL'"]
+    FrontendValidate{"Validasi Frontend"}
+    ShowFrontendErr["Tampilkan pesan error\n(field kosong / melebihi batas karakter)"]
+
+    SendAPI["Kirim POST request ke\n/api/course/generate-kwl-pdf\ndengan Bearer token"]
+    BackendValidate{"Validasi Backend"}
+    ReturnError["Return error 400\n(topik kosong / pertanyaan melebihi limit)"]
+    ShowAPIError[Tampilkan error di modal]
+
+    GeneratePDF["Backend generate PDF\nvia ReportLab"]
+    ReturnPDF["Return PDF bytes\nContent-Type: application/pdf"]
+    DownloadFile[Browser otomatis download file PDF]
+    CloseModal[Modal tertutup otomatis]
+    Done([Selesai - PDF tersimpan di device])
+
+    Start --> ClickBtn
+    ClickBtn --> ModalOpen
+    ModalOpen --> InputTopic
+    InputTopic --> ChooseMode
+
+    ChooseMode -->|Pertanyaan Default| DefaultMode
+    DefaultMode --> DefaultPreview
+    DefaultPreview --> ClickDownload
+
+    ChooseMode -->|Input Sendiri| CustomMode
+    CustomMode --> CustomInput
+    CustomInput --> AddMore
+    AddMore -->|Ya| CustomInput
+    AddMore -->|Tidak / Sudah 3| ClickDownload
+
+    ClickDownload --> FrontendValidate
+    FrontendValidate -->|Error| ShowFrontendErr
+    ShowFrontendErr --> InputTopic
+    FrontendValidate -->|Valid| SendAPI
+
+    SendAPI --> BackendValidate
+    BackendValidate -->|Error| ReturnError
+    ReturnError --> ShowAPIError
+    ShowAPIError --> InputTopic
+    BackendValidate -->|Valid| GeneratePDF
+
+    GeneratePDF --> ReturnPDF
+    ReturnPDF --> DownloadFile
+    DownloadFile --> CloseModal
+    CloseModal --> Done
+        </div>
+    </div>
+
+    <div class="legend">
+        <h2>Keterangan</h2>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <div class="legend-badge badge-blue"></div>
+                <span><strong>Frontend (Next.js)</strong> &mdash; Halaman course di <code>/courses/[id]</code>, modal form, validasi input, download file</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-badge badge-teal"></div>
+                <span><strong>API Endpoint</strong> &mdash; <code>POST /api/course/generate-kwl-pdf</code> dengan autentikasi JWT</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-badge badge-green"></div>
+                <span><strong>Backend (Django)</strong> &mdash; Validasi data, generate PDF dengan ReportLab, return bytes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-badge badge-orange"></div>
+                <span><strong>Mode Default</strong> &mdash; 3 pertanyaan standar KWL otomatis berdasarkan topik</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-badge badge-red"></div>
+                <span><strong>Validasi</strong> &mdash; Topik maks 80 karakter, pertanyaan maks 3 per section, batas karakter per pertanyaan dinamis</span>
+            </div>
+        </div>
+    </div>
+
+    <p class="footer">K-Owl Project &mdash; Flowchart Generate PDF KWL</p>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8eaf6',
+                primaryBorderColor: '#293692',
+                primaryTextColor: '#1a1a2e',
+                lineColor: '#293692',
+                secondaryColor: '#fff3e0',
+                tertiaryColor: '#e8f5e9',
+                fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+                fontSize: '13px',
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 16,
+                nodeSpacing: 30,
+                rankSpacing: 40,
+                useMaxWidth: true,
+            },
+        });
+    </script>
+</body>
+</html>
