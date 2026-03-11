@@ -39,7 +39,7 @@
             border-radius: 16px;
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
             padding: 40px;
-            max-width: 900px;
+            max-width: 950px;
             width: 100%;
             overflow-x: auto;
         }
@@ -51,7 +51,7 @@
 
         .legend {
             margin-top: 32px;
-            max-width: 900px;
+            max-width: 950px;
             width: 100%;
             background: #fff;
             border-radius: 16px;
@@ -93,6 +93,7 @@
         .badge-red { background: #F94747; }
         .badge-orange { background: #FF8227; }
         .badge-teal { background: #1BA4B4; }
+        .badge-purple { background: #7C3AED; }
 
         .footer {
             margin-top: 24px;
@@ -110,43 +111,57 @@
 </head>
 <body>
     <h1>Flowchart: Generate PDF KWL</h1>
-    <p class="subtitle">Alur dosen menggunakan fitur Generate Form KWL pada halaman Course</p>
+    <p class="subtitle">Alur dosen menggunakan fitur Generate Form KWL pada kartu Topik</p>
 
     <div class="card">
         <div class="mermaid">
 flowchart TD
     Start([Dosen membuka halaman Course])
-    ClickBtn["Klik tombol 'Generate Form KWL'"]
-    ModalOpen[Modal form terbuka]
-    InputTopic["Isi Topik Materi (maks 80 karakter)"]
+    SeeTopic["Melihat daftar kartu Topik"]
+    ClickBtn["Klik tombol 'Generate KWL'\npada kartu topik"]
+    ModalOpen["Modal form terbuka\n(topik otomatis terisi dari kartu)"]
+
+    FetchExisting["Frontend fetch pertanyaan tersimpan\nGET /api/course/kwl-form-questions/topicId"]
+    HasExisting{Ada pertanyaan\nsebelumnya?}
+
+    PreFill["Pertanyaan sebelumnya\nditampilkan di form\n(mode: Input Sendiri)"]
+    EmptyForm["Form kosong\n(mode: Pertanyaan Default)"]
+
     ChooseMode{Pilih Jenis Pertanyaan}
 
     DefaultMode["Mode: Pertanyaan Default"]
     DefaultPreview["Preview otomatis 3 pertanyaan:\nK: Apa yang kamu ketahui tentang Topik?\nW: Apa yang ingin kamu ketahui tentang Topik?\nL: Apa yang sudah kamu pelajari tentang Topik?"]
 
     CustomMode["Mode: Input Sendiri"]
-    CustomInput["Isi pertanyaan custom\nper section K / W / L"]
+    CustomInput["Isi/edit pertanyaan custom\nper section K / W / L"]
     AddMore{"Tambah pertanyaan?\n(maks 3 per section)"}
 
     ClickDownload["Klik 'Download PDF KWL'"]
     FrontendValidate{"Validasi Frontend"}
     ShowFrontendErr["Tampilkan pesan error\n(field kosong / melebihi batas karakter)"]
 
-    SendAPI["Kirim POST request ke\n/api/course/generate-kwl-pdf\ndengan Bearer token"]
+    SendAPI["Kirim POST ke /api/course/generate-kwl-pdf\ndengan Bearer token + topic_id"]
     BackendValidate{"Validasi Backend"}
-    ReturnError["Return error 400\n(topik kosong / pertanyaan melebihi limit)"]
+    ReturnError["Return error 400"]
     ShowAPIError[Tampilkan error di modal]
 
-    GeneratePDF["Backend generate PDF\nvia ReportLab"]
+    SaveToDB["Simpan pertanyaan ke tabel\nKWLFormQuestion\n(replace pertanyaan lama)"]
+    GeneratePDF["Generate PDF via ReportLab"]
     ReturnPDF["Return PDF bytes\nContent-Type: application/pdf"]
     DownloadFile[Browser otomatis download file PDF]
     CloseModal[Modal tertutup otomatis]
-    Done([Selesai - PDF tersimpan di device])
+    Done([Selesai - PDF tersimpan di device\nPertanyaan tersimpan di database])
 
-    Start --> ClickBtn
+    Start --> SeeTopic
+    SeeTopic --> ClickBtn
     ClickBtn --> ModalOpen
-    ModalOpen --> InputTopic
-    InputTopic --> ChooseMode
+    ModalOpen --> FetchExisting
+
+    FetchExisting --> HasExisting
+    HasExisting -->|Ya| PreFill
+    HasExisting -->|Tidak| EmptyForm
+    PreFill --> ChooseMode
+    EmptyForm --> ChooseMode
 
     ChooseMode -->|Pertanyaan Default| DefaultMode
     DefaultMode --> DefaultPreview
@@ -160,15 +175,16 @@ flowchart TD
 
     ClickDownload --> FrontendValidate
     FrontendValidate -->|Error| ShowFrontendErr
-    ShowFrontendErr --> InputTopic
+    ShowFrontendErr --> CustomInput
     FrontendValidate -->|Valid| SendAPI
 
     SendAPI --> BackendValidate
     BackendValidate -->|Error| ReturnError
     ReturnError --> ShowAPIError
-    ShowAPIError --> InputTopic
-    BackendValidate -->|Valid| GeneratePDF
+    ShowAPIError --> ChooseMode
+    BackendValidate -->|Valid| SaveToDB
 
+    SaveToDB --> GeneratePDF
     GeneratePDF --> ReturnPDF
     ReturnPDF --> DownloadFile
     DownloadFile --> CloseModal
@@ -181,23 +197,27 @@ flowchart TD
         <div class="legend-grid">
             <div class="legend-item">
                 <div class="legend-badge badge-blue"></div>
-                <span><strong>Frontend (Next.js)</strong> &mdash; Halaman course di <code>/courses/[id]</code>, modal form, validasi input, download file</span>
+                <span><strong>Frontend (Next.js)</strong> &mdash; Tombol Generate KWL di setiap kartu topik, modal form, validasi input, download file</span>
             </div>
             <div class="legend-item">
                 <div class="legend-badge badge-teal"></div>
-                <span><strong>API Endpoint</strong> &mdash; <code>POST /api/course/generate-kwl-pdf</code> dengan autentikasi JWT</span>
+                <span><strong>API Endpoints</strong> &mdash; <code>GET /api/course/kwl-form-questions/:topicId</code> untuk fetch pertanyaan tersimpan, <code>POST /api/course/generate-kwl-pdf</code> untuk simpan &amp; generate</span>
             </div>
             <div class="legend-item">
                 <div class="legend-badge badge-green"></div>
-                <span><strong>Backend (Django)</strong> &mdash; Validasi data, generate PDF dengan ReportLab, return bytes</span>
+                <span><strong>Backend (Django)</strong> &mdash; Validasi data, simpan ke tabel <code>KWLFormQuestion</code>, generate PDF dengan ReportLab</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-badge badge-purple"></div>
+                <span><strong>Penyimpanan</strong> &mdash; Pertanyaan disimpan di tabel terpisah (<code>KWLFormQuestion</code>), tidak terkait fitur essay existing</span>
             </div>
             <div class="legend-item">
                 <div class="legend-badge badge-orange"></div>
-                <span><strong>Mode Default</strong> &mdash; 3 pertanyaan standar KWL otomatis berdasarkan topik</span>
+                <span><strong>Mode Default</strong> &mdash; 3 pertanyaan standar KWL otomatis berdasarkan nama topik</span>
             </div>
             <div class="legend-item">
                 <div class="legend-badge badge-red"></div>
-                <span><strong>Validasi</strong> &mdash; Topik maks 80 karakter, pertanyaan maks 3 per section, batas karakter per pertanyaan dinamis</span>
+                <span><strong>Validasi</strong> &mdash; Topik maks 80 karakter, pertanyaan maks 3 per section, batas karakter dinamis per pertanyaan</span>
             </div>
         </div>
     </div>
