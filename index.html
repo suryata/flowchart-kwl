@@ -130,18 +130,18 @@ flowchart TD
     ChooseMode{Pilih Jenis Pertanyaan}
 
     DefaultMode["Mode: Pertanyaan Default"]
-    DefaultPreview["Preview otomatis 3 pertanyaan:\nK: Apa yang kamu ketahui tentang Topik?\nW: Apa yang ingin kamu ketahui tentang Topik?\nL: Apa yang sudah kamu pelajari tentang Topik?"]
+    DefaultPreview["Preview otomatis 3 pertanyaan:\nK: Apa yang kamu ketahui tentang [Topik]?\nW: Apa yang ingin kamu ketahui tentang [Topik]?\nL: Apa yang sudah kamu pelajari tentang [Topik]?"]
+    ClickDownloadDefault["Klik 'Download PDF KWL'"]
 
     CustomMode["Mode: Input Sendiri"]
     CustomInput["Isi/edit pertanyaan custom\nper section K / W / L"]
     AddMore{"Tambah pertanyaan?\n(maks 3 per section)"}
-
-    ClickDownload["Klik 'Download PDF KWL'"]
+    ClickDownloadCustom["Klik 'Download PDF KWL'"]
     FrontendValidate{"Validasi Frontend"}
     ShowFrontendErr["Tampilkan pesan error\n(field kosong / melebihi batas karakter)"]
 
     SendAPI["Kirim POST ke /api/course/generate-kwl-pdf\ndengan Bearer token + topic_id"]
-    BackendValidate{"Validasi Backend"}
+    BackendValidate{"Validasi Backend\n(hanya untuk custom)"}
     ReturnError["Return error 400"]
     ShowAPIError[Tampilkan error di modal]
 
@@ -165,15 +165,16 @@ flowchart TD
 
     ChooseMode -->|Pertanyaan Default| DefaultMode
     DefaultMode --> DefaultPreview
-    DefaultPreview --> ClickDownload
+    DefaultPreview --> ClickDownloadDefault
+    ClickDownloadDefault --> SendAPI
 
     ChooseMode -->|Input Sendiri| CustomMode
     CustomMode --> CustomInput
     CustomInput --> AddMore
     AddMore -->|Ya| CustomInput
-    AddMore -->|Tidak / Sudah 3| ClickDownload
+    AddMore -->|Tidak / Sudah 3| ClickDownloadCustom
 
-    ClickDownload --> FrontendValidate
+    ClickDownloadCustom --> FrontendValidate
     FrontendValidate -->|Error| ShowFrontendErr
     ShowFrontendErr --> CustomInput
     FrontendValidate -->|Valid| SendAPI
