@@ -132,6 +132,12 @@ flowchart TD
     DefaultMode["Mode: Pertanyaan Default"]
     DefaultPreview["Preview otomatis 3 pertanyaan:\nK: Apa yang kamu ketahui tentang [Topik]?\nW: Apa yang ingin kamu ketahui tentang [Topik]?\nL: Apa yang sudah kamu pelajari tentang [Topik]?"]
     ClickDownloadDefault["Klik 'Download PDF KWL'"]
+    SendAPIDefault["Kirim POST ke /api/course/generate-kwl-pdf\n(tanpa topic_id, tidak disimpan ke DB)"]
+    GeneratePDFDefault["Generate PDF via ReportLab"]
+    ReturnPDFDefault["Return PDF bytes"]
+    DownloadDefault[Browser otomatis download file PDF]
+    CloseModalDefault[Modal tertutup otomatis]
+    DoneDefault([Selesai - PDF tersimpan di device\nPertanyaan custom sebelumnya tetap tersimpan])
 
     CustomMode["Mode: Input Sendiri"]
     CustomInput["Isi/edit pertanyaan custom\nper section K / W / L"]
@@ -140,14 +146,14 @@ flowchart TD
     FrontendValidate{"Validasi Frontend"}
     ShowFrontendErr["Tampilkan pesan error\n(field kosong / melebihi batas karakter)"]
 
-    SendAPI["Kirim POST ke /api/course/generate-kwl-pdf\ndengan Bearer token + topic_id"]
-    BackendValidate{"Validasi Backend\n(hanya untuk custom)"}
+    SendAPICustom["Kirim POST ke /api/course/generate-kwl-pdf\ndengan Bearer token + topic_id"]
+    BackendValidate{"Validasi Backend"}
     ReturnError["Return error 400"]
     ShowAPIError[Tampilkan error di modal]
 
     SaveToDB["Simpan pertanyaan ke tabel\nKWLFormQuestion\n(replace pertanyaan lama)"]
     GeneratePDF["Generate PDF via ReportLab"]
-    ReturnPDF["Return PDF bytes\nContent-Type: application/pdf"]
+    ReturnPDF["Return PDF bytes"]
     DownloadFile[Browser otomatis download file PDF]
     CloseModal[Modal tertutup otomatis]
     Done([Selesai - PDF tersimpan di device\nPertanyaan tersimpan di database])
@@ -166,7 +172,12 @@ flowchart TD
     ChooseMode -->|Pertanyaan Default| DefaultMode
     DefaultMode --> DefaultPreview
     DefaultPreview --> ClickDownloadDefault
-    ClickDownloadDefault --> SendAPI
+    ClickDownloadDefault --> SendAPIDefault
+    SendAPIDefault --> GeneratePDFDefault
+    GeneratePDFDefault --> ReturnPDFDefault
+    ReturnPDFDefault --> DownloadDefault
+    DownloadDefault --> CloseModalDefault
+    CloseModalDefault --> DoneDefault
 
     ChooseMode -->|Input Sendiri| CustomMode
     CustomMode --> CustomInput
@@ -177,9 +188,9 @@ flowchart TD
     ClickDownloadCustom --> FrontendValidate
     FrontendValidate -->|Error| ShowFrontendErr
     ShowFrontendErr --> CustomInput
-    FrontendValidate -->|Valid| SendAPI
+    FrontendValidate -->|Valid| SendAPICustom
 
-    SendAPI --> BackendValidate
+    SendAPICustom --> BackendValidate
     BackendValidate -->|Error| ReturnError
     ReturnError --> ShowAPIError
     ShowAPIError --> ChooseMode
